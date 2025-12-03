@@ -19,7 +19,8 @@
     .segmented button.active { background:var(--brand); color:#fff; box-shadow: 0 1px 2px rgba(0,0,0,.1); }
     label .lab { display:block; font-size: 13px; font-weight:600; margin-bottom:6px; }
     input[type="number"], select { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:12px; font-size:14px; }
-    input[type="range"] { width:100%; }
+    input[type="range"] { width:100%; accent-color:#ef4444; }
+    .input-invalid { border-color:#b91c1c; background:#fef2f2; }
     .row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; }
     .muted { color:var(--muted); }
     .warn { color:#b91c1c; font-size: 13px; margin-top:8px; }
@@ -108,7 +109,7 @@
           <div class="card">
             <h3 style="margin:0 0 6px">Wynik</h3>
             <div id="resultInputs"></div>
-            <div id="warnInputs" class="warn" style="display:none">Uwaga: cos φ musi być &gt; 0.</div>
+            <div id="warnInputs" class="warn" style="display:none">Uwaga: cos φ musi być w zakresie (0, 1].</div>
           </div>
         </div>
       </div>
@@ -157,7 +158,7 @@
           <div class="card">
             <h3 style="margin:0 0 6px">Wynik</h3>
             <div id="resultSliders"></div>
-            <div id="warnSliders" class="warn" style="display:none">Uwaga: cos φ musi być &gt; 0.</div>
+            <div id="warnSliders" class="warn" style="display:none">Uwaga: cos φ musi być w zakresie (0, 1].</div>
             <div class="footer">Przesuwaj suwaki, aby zobaczyć wpływ parametrów na wynik.</div>
           </div>
         </div>
@@ -195,15 +196,30 @@
     const Uval = () => phase === '1F' ? 230 : 400;
 
     function calcI(P_W, U_V, c, is3F){
-      if (!c || c <= 0) return null;
+      if (!c || c <= 0 || c > 1) return null;
       const denom = is3F ? (U_V * SQRT3 * c) : (U_V * c);
       if (denom === 0) return null;
       return P_W / denom; // A
     }
     function calcP(I_A, U_V, c, is3F){
-      if (!c || c <= 0) return null;
+      if (!c || c <= 0 || c > 1) return null;
       const factor = is3F ? (U_V * SQRT3 * c) : (U_V * c);
       return I_A * factor; // W
+    }
+
+    function derivedPowers(P_W, c){
+      if (!P_W || !c || c <= 0 || c > 1) return { S:null, Q:null };
+      const S = P_W / c;
+      const phi = Math.acos(Math.min(1, Math.max(0, c)));
+      const Q = P_W * Math.tan(phi);
+      return { S, Q };
+    }
+
+    function validateCos(inputEl){
+      const c = parseFloat(inputEl.value || '');
+      const valid = c > 0 && c <= 1;
+      inputEl.classList.toggle('input-invalid', !valid && inputEl.type === 'number');
+      return { c, valid };
     }
 
     // Elementy segmented
@@ -274,52 +290,62 @@
       // Inputs mode
       if (mode === 'inputs'){
         const warn = $('#warnInputs');
-        let html = '';
+        const parts = [];
         if (dir === 'IfromP'){
           const P_val = parseFloat(Pnum.value || '0');
           const P_W = (Punit.value === 'kW') ? P_val * 1000 : P_val;
-          const c = parseFloat(cosfi.value || '0');
+          const { c, valid } = validateCos(cosfi);
           const I = calcI(P_W, U, c, is3);
-          html += row('Prąd I', '<strong>' + fmt(I,'A') + '</strong>');
-          html += row('P [W] (obliczane)', fmt(P_W,'W'));
-          warn.style.display = (!c || c <= 0) ? '' : 'none';
+          parts.push(row('Prąd I', '<strong>' + fmt(I,'A') + '</strong>'));
+          parts.push(row('P [W] (obliczane)', fmt(P_W,'W')));
+          appendPowerDetails({ parts, P_W, c });
+          warn.style.display = valid ? 'none' : '';
         } else {
           const I_val = parseFloat(Inum.value || '0');
-          const c = parseFloat(cosfi2.value || '0');
+          const { c, valid } = validateCos(cosfi2);
           const P_W = calcP(I_val, U, c, is3);
-          html += row('Moc P (W)', '<strong>' + fmt(P_W,'W') + '</strong>');
-          html += row('Moc P (kW)', '<strong>' + fmt(P_W ? P_W/1000 : null,'kW') + '</strong>');
-          warn.style.display = (!c || c <= 0) ? '' : 'none';
+          parts.push(row('Moc P (W)', '<strong>' + fmt(P_W,'W') + '</strong>'));
+          parts.push(row('Moc P (kW)', '<strong>' + fmt(P_W ? P_W/1000 : null,'kW') + '</strong>'));
+          appendPowerDetails({ parts, P_W, c });
+          warn.style.display = valid ? 'none' : '';
         }
-        $('#resultInputs').innerHTML = html;
+        $('#resultInputs').innerHTML = parts.join('');
       }
 
       // Sliders mode
       if (mode === 'sliders'){
         const warn = $('#warnSliders');
-        let html = '';
+        const parts = [];
         if (dir === 'IfromP'){
           const P_kW = parseFloat(Pslide.value || '0');
           const P_W = P_kW * 1000;
           const c = parseFloat(cosfiSlide.value || '0');
           const I = calcI(P_W, U, c, is3);
-          html += row('Prąd I', '<strong>' + fmt(I,'A') + '</strong>');
-          html += row('P [W] (wejście)', fmt(P_W,'W'));
-          warn.style.display = (!c || c <= 0) ? '' : 'none';
+          parts.push(row('Prąd I', '<strong>' + fmt(I,'A') + '</strong>'));
+          parts.push(row('P [W] (wejście)', fmt(P_W,'W')));
+          appendPowerDetails({ parts, P_W, c });
+          warn.style.display = (c > 0 && c <= 1) ? 'none' : '';
         } else {
           const I_val = parseFloat(Islide.value || '0');
           const c = parseFloat(cosfiSlide2.value || '0');
           const P_W = calcP(I_val, U, c, is3);
-          html += row('Moc P (W)', '<strong>' + fmt(P_W,'W') + '</strong>');
-          html += row('Moc P (kW)', '<strong>' + fmt(P_W ? P_W/1000 : null,'kW') + '</strong>');
-          warn.style.display = (!c || c <= 0) ? '' : 'none';
+          parts.push(row('Moc P (W)', '<strong>' + fmt(P_W,'W') + '</strong>'));
+          parts.push(row('Moc P (kW)', '<strong>' + fmt(P_W ? P_W/1000 : null,'kW') + '</strong>'));
+          appendPowerDetails({ parts, P_W, c });
+          warn.style.display = (c > 0 && c <= 1) ? 'none' : '';
         }
-        $('#resultSliders').innerHTML = html;
+        $('#resultSliders').innerHTML = parts.join('');
       }
     }
 
     function row(label, valueHtml){
       return '<div class="row"><span class="muted">' + label + '</span><span>' + valueHtml + '</span></div>';
+    }
+
+    function appendPowerDetails({ parts, P_W, c }){
+      const { S, Q } = derivedPowers(P_W, c);
+      parts.push(row('Moc pozorna S', fmt(S, 'VA')));
+      parts.push(row('Moc bierna Q', fmt(Q, 'var')));
     }
 
     // Inicjalizacja UI
