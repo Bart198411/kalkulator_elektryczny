@@ -288,6 +288,14 @@
       return { S, Q };
     }
 
+    function pickProtection(I){
+      const normalized = (typeof I === 'number' && isFinite(I)) ? I : null;
+      if (normalized === null || normalized <= 0) return { Ib:null };
+      const steps = [6, 10, 13, 16, 20, 25, 32, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400];
+      const Ib = steps.find(step => normalized <= step) ?? steps[steps.length - 1];
+      return { Ib };
+    }
+
     function validateCos(inputEl){
       const c = parseFloat(inputEl.value || '');
       const valid = c > 0 && c <= 1;
@@ -383,6 +391,7 @@
           const I = calcI(P_W, U, c, is3);
           parts.push(row('Prąd I', '<strong>' + fmt(I,'A') + '</strong>'));
           parts.push(row('P [W] (obliczane)', fmt(P_W,'W')));
+          appendProtection({ parts, I });
           appendPowerDetails({ parts, P_W, c });
           warn.style.display = valid ? 'none' : '';
         } else {
@@ -391,6 +400,7 @@
           const P_W = calcP(I_val, U, c, is3);
           parts.push(row('Moc P (W)', '<strong>' + fmt(P_W,'W') + '</strong>'));
           parts.push(row('Moc P (kW)', '<strong>' + fmt(P_W ? P_W/1000 : null,'kW') + '</strong>'));
+          appendProtection({ parts, I: I_val });
           appendPowerDetails({ parts, P_W, c });
           warn.style.display = valid ? 'none' : '';
         }
@@ -408,6 +418,7 @@
           const I = calcI(P_W, U, c, is3);
           parts.push(row('Prąd I', '<strong>' + fmt(I,'A') + '</strong>'));
           parts.push(row('P [W] (wejście)', fmt(P_W,'W')));
+          appendProtection({ parts, I });
           appendPowerDetails({ parts, P_W, c });
           warn.style.display = (c > 0 && c <= 1) ? 'none' : '';
         } else {
@@ -416,6 +427,7 @@
           const P_W = calcP(I_val, U, c, is3);
           parts.push(row('Moc P (W)', '<strong>' + fmt(P_W,'W') + '</strong>'));
           parts.push(row('Moc P (kW)', '<strong>' + fmt(P_W ? P_W/1000 : null,'kW') + '</strong>'));
+          appendProtection({ parts, I: I_val });
           appendPowerDetails({ parts, P_W, c });
           warn.style.display = (c > 0 && c <= 1) ? 'none' : '';
         }
@@ -431,6 +443,12 @@
       const { S, Q } = derivedPowers(P_W, c);
       parts.push(row('Moc pozorna S', fmt(S, 'VA')));
       parts.push(row('Moc bierna Q', fmt(Q, 'var')));
+    }
+
+    function appendProtection({ parts, I }){
+      const { Ib } = pickProtection(I);
+      const label = Ib ? 'Wyłącznik nadprądowy (Ib = ' + fmt(Ib, 'A') + ')' : '—';
+      parts.push(row('Dobór zabezpieczenia', label));
     }
 
     // Inicjalizacja UI
