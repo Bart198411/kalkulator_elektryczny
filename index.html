@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#b91c1c" />
   <title>Kalkulator mocy↔prądu (1F/3F) – wersja offline</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon.svg" />
   <style>
     :root { --bg:#fff5f5; --card:#fff; --border:#fca5a5; --text:#111827; --muted:#7f1d1d; --brand:#b91c1c; }
     * { box-sizing: border-box; }
@@ -19,7 +22,7 @@
       flex:1;
       border:0;
       background:transparent;
-      padding:8px 12px;
+      padding:10px 14px;
       border-radius:999px;
       cursor:pointer;
       color:#374151;
@@ -81,6 +84,14 @@
     .small { font-size: 13px; }
     .footer { color:var(--muted); font-size:12px; margin-top:4px; }
     .pill { display:inline-block; padding:2px 8px; border:1px solid var(--border); border-radius:999px; font-size:12px; color:#374151; background:#fff; }
+
+    @media (max-width: 540px){
+      .container { padding:16px; }
+      .segmented { flex-direction: column; }
+      .segmented button { padding:12px 14px; }
+      input[type="range"]::-webkit-slider-thumb { width:22px; height:22px; }
+      input[type="range"]::-moz-range-thumb { width:22px; height:22px; }
+    }
   </style>
 </head>
 <body>
@@ -455,6 +466,11 @@
     updatePhaseLabels();
     updateVisibility();
     recalc();
+
+    // Rejestracja service workera (PWA/offline)
+    if ('serviceWorker' in navigator){
+      window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js'));
+    }
   </script>
 </body>
 </html>

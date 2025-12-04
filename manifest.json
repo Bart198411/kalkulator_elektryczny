@@ -1,0 +1,17 @@
+{
+  "name": "Kalkulator mocy ↔ prądu",
+  "short_name": "Kalkulator",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fff5f5",
+  "theme_color": "#b91c1c",
+  "description": "Prosty kalkulator mocy i prądu 1F/3F działający offline.",
+  "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
