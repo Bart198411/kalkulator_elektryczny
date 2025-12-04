@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Kalkulator mocy↔prądu (1F/3F) – wersja offline</title>
   <style>
-    :root { --bg:#f7f7fa; --card:#fff; --border:#e5e7eb; --text:#111827; --muted:#6b7280; --brand:#2563eb; }
+    :root { --bg:#fff5f5; --card:#fff; --border:#fca5a5; --text:#111827; --muted:#7f1d1d; --brand:#b91c1c; }
     * { box-sizing: border-box; }
     body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif; background:var(--bg); color:var(--text); }
     .container { max-width: 960px; margin: 0 auto; padding: 24px; }
@@ -15,11 +15,65 @@
     @media (min-width: 768px){ .grid-3 { grid-template-columns: repeat(3, minmax(0,1fr)); } .grid-2 { grid-template-columns: repeat(2, minmax(0,1fr)); } }
     .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
     .segmented { display:flex; gap:6px; background:#fff; border:1px solid var(--border); padding:6px; border-radius:999px; }
-    .segmented button { flex:1; border:0; background:transparent; padding:8px 12px; border-radius:999px; cursor:pointer; color:#374151; font-size:14px; }
-    .segmented button.active { background:var(--brand); color:#fff; box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+    .segmented button {
+      flex:1;
+      border:0;
+      background:transparent;
+      padding:8px 12px;
+      border-radius:999px;
+      cursor:pointer;
+      color:#374151;
+      font-size:14px;
+      transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.18s ease;
+    }
+    .segmented button:hover { background:#fee2e2; }
+    .segmented button:active { transform: scale(0.99); }
+    .segmented button.active { background:var(--brand); color:#fff; box-shadow: 0 3px 10px rgba(0,0,0,.12); transform: translateY(-1px); }
+    .segmented button.pulse { animation: pulseTap 0.28s ease; }
     label .lab { display:block; font-size: 13px; font-weight:600; margin-bottom:6px; }
     input[type="number"], select { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:12px; font-size:14px; }
-    input[type="range"] { width:100%; accent-color:#ef4444; }
+    input[type="range"] {
+      width:100%;
+      height:10px;
+      appearance:none;
+      background: linear-gradient(90deg, var(--brand) 50%, #fee2e2 50%);
+      border-radius:999px;
+      outline:none;
+      accent-color: var(--brand);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.12);
+      transition: background 0.2s ease, box-shadow 0.2s ease;
+    }
+    input[type="range"]:focus-visible { box-shadow: 0 0 0 2px rgba(185,28,28,.25), inset 0 1px 2px rgba(0,0,0,.12); }
+    input[type="range"]::-webkit-slider-thumb {
+      appearance:none;
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background:#fff;
+      border:2px solid var(--brand);
+      box-shadow: 0 2px 4px rgba(0,0,0,.2);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      background:#fff;
+      border:2px solid var(--brand);
+      box-shadow: 0 2px 4px rgba(0,0,0,.2);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    input[type="range"]::-moz-range-track { background: transparent; border: none; }
+    input[type="range"]:active::-webkit-slider-thumb,
+    input[type="range"]:active::-moz-range-thumb { transform: scale(1.1); box-shadow: 0 3px 6px rgba(0,0,0,.25); }
+    input[type="range"].spark { box-shadow: 0 0 0 3px rgba(185,28,28,.15), 0 0 18px rgba(185,28,28,.25); animation: surgeTrack 0.35s ease; }
+    input[type="range"].spark::-webkit-slider-thumb,
+    input[type="range"].spark::-moz-range-thumb { animation: surgeThumb 0.35s ease; }
+    .pop-in { animation: fadeSlideIn 0.24s ease; }
+    @keyframes fadeSlideIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+    @keyframes pulseTap { 0% { transform: scale(1); } 50% { transform: scale(0.97); } 100% { transform: scale(1); } }
+    @keyframes surgeTrack { 0% { filter: brightness(1.05); } 50% { box-shadow: 0 0 0 4px rgba(185,28,28,.25), 0 0 20px rgba(185,28,28,.35); filter: brightness(1.2); } 100% { filter: brightness(1.05); } }
+    @keyframes surgeThumb { 0% { transform: scale(1.05); box-shadow: 0 0 0 0 rgba(185,28,28,.3); } 50% { transform: scale(1.18); box-shadow: 0 0 18px rgba(185,28,28,.45); } 100% { transform: scale(1.05); box-shadow: 0 2px 4px rgba(0,0,0,.2); } }
     .input-invalid { border-color:#b91c1c; background:#fef2f2; }
     .row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; }
     .muted { color:var(--muted); }
@@ -194,6 +248,25 @@
     };
 
     const Uval = () => phase === '1F' ? 230 : 400;
+    const kickAnim = (el, cls='pop-in') => {
+      if (!el) return;
+      el.classList.remove(cls);
+      void el.offsetWidth;
+      el.classList.add(cls);
+    };
+    const flashSpark = (el) => {
+      if (!el) return;
+      el.classList.add('spark');
+      setTimeout(()=>el.classList.remove('spark'), 220);
+    };
+    const setRangeBg = (el) => {
+      if (!el) return;
+      const min = parseFloat(el.min || '0');
+      const max = parseFloat(el.max || '1');
+      const val = parseFloat(el.value || '0');
+      const pct = max === min ? 0 : ((val - min) / (max - min)) * 100;
+      el.style.background = `linear-gradient(90deg, var(--brand) ${pct}%, #fee2e2 ${pct}%)`;
+    };
 
     function calcI(P_W, U_V, c, is3F){
       if (!c || c <= 0 || c > 1) return null;
@@ -229,6 +302,7 @@
         btn.addEventListener('click', () => {
           root.querySelectorAll('button').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
+          kickAnim(btn, 'pulse');
           onChange(btn.getAttribute('data-value'));
         });
       });
@@ -261,6 +335,15 @@
       $('#inputsPfromI').style.display = (mode==='inputs' && dir==='PfromI') ? '' : 'none';
       $('#slidersIfromP').style.display = (mode==='sliders' && dir==='IfromP') ? '' : 'none';
       $('#slidersPfromI').style.display = (mode==='sliders' && dir==='PfromI') ? '' : 'none';
+      const toAnim = [];
+      if (mode === 'inputs'){
+        toAnim.push($('#panelInputs'));
+        toAnim.push(dir === 'IfromP' ? $('#inputsIfromP') : $('#inputsPfromI'));
+      } else {
+        toAnim.push($('#panelSliders'));
+        toAnim.push(dir === 'IfromP' ? $('#slidersIfromP') : $('#slidersPfromI'));
+      }
+      toAnim.forEach(kickAnim);
     }
 
     // Powiązania wejść (inputs)
@@ -278,10 +361,12 @@
     const Islide = $('#Islide');
     const cosfiSlide2 = $('#cosfiSlide2');
 
-    Pslide.addEventListener('input', ()=>{ $('#PslideVal').textContent = Number(Pslide.value).toFixed(1) + ' kW'; recalc(); });
-    cosfiSlide.addEventListener('input', ()=>{ $('#cosSlideVal').textContent = Number(cosfiSlide.value).toFixed(2); recalc(); });
-    Islide.addEventListener('input', ()=>{ $('#IslideVal').textContent = Number(Islide.value).toFixed(1) + ' A'; recalc(); });
-    cosfiSlide2.addEventListener('input', ()=>{ $('#cosSlideVal2').textContent = Number(cosfiSlide2.value).toFixed(2); recalc(); });
+    [Pslide, cosfiSlide, Islide, cosfiSlide2].forEach(setRangeBg);
+
+    Pslide.addEventListener('input', ()=>{ setRangeBg(Pslide); flashSpark(Pslide); $('#PslideVal').textContent = Number(Pslide.value).toFixed(1) + ' kW'; recalc(); });
+    cosfiSlide.addEventListener('input', ()=>{ setRangeBg(cosfiSlide); flashSpark(cosfiSlide); $('#cosSlideVal').textContent = Number(cosfiSlide.value).toFixed(2); recalc(); });
+    Islide.addEventListener('input', ()=>{ setRangeBg(Islide); flashSpark(Islide); $('#IslideVal').textContent = Number(Islide.value).toFixed(1) + ' A'; recalc(); });
+    cosfiSlide2.addEventListener('input', ()=>{ setRangeBg(cosfiSlide2); flashSpark(cosfiSlide2); $('#cosSlideVal2').textContent = Number(cosfiSlide2.value).toFixed(2); recalc(); });
 
     function recalc(){
       const U = Uval();
